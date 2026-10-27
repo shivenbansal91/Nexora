@@ -1,0 +1,59 @@
+# p2-pipeline — Simulation & Event Pipeline
+
+Owner: P2. Branch: `p2-pipeline`.
+
+## What this repo does
+Generates synthetic network/security events (normal traffic + injected
+attacks) that match the team's shared event schema, so P1 (detection),
+P3 (correlation), and P4 (frontend) all have a consistent, realistic
+event stream to build against.
+
+## Week 1 scope (this commit)
+- [x] Repo scaffolded: `schema/`, `simulator/`, `tests/`
+- [x] Copy of the agreed event schema (`schema/event_schema.json`) —
+      **this file should be identical to the one P1/P3/P4 have.** If it
+      diverges, that's a Week 1 milestone failure, not a Week 2 problem.
+- [x] Minimal `NormalTrafficGenerator` sketch — 2 event types
+      (`auth_login_success`, `api_call`), proves the schema round-trips
+      to valid JSON.
+- [x] Basic schema-validation test so drift gets caught by CI/tests,
+      not discovered during Week 6 integration.
+
+## Explicitly NOT in scope this week (coming Week 2+)
+- DB/file event types
+- Attack injectors (brute-force, port scan, etc.)
+- Session continuity (multiple events sharing one session ID like a
+  real user session would)
+- FastAPI endpoint to emit events over HTTP
+- Timing/burst controls
+
+## Setup
+```bash
+python -m venv venv
+source venv/bin/activate       # Windows: venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+## Run the sketch
+```bash
+python -m simulator.generator
+```
+Prints 5 sample schema-compliant events to stdout.
+
+## Run tests
+```bash
+pytest tests/ -v
+```
+
+## Schema contract
+`schema/event_schema.json` is the source of truth for this module.
+**Do not edit it unilaterally.** If a field needs to change, raise it in
+the weekly sync first — a silent schema change here breaks P1's
+inference wrapper, P3's correlation graph, and P4's live feed component
+simultaneously, since all four modules build against this same file.
+
+## Milestone check (Week 1)
+- [ ] Schema file committed and matches team's agreed version
+- [ ] `python -m simulator.generator` runs without error
+- [ ] `pytest tests/` passes
+- [ ] First commit pushed to `p2-pipeline` branch

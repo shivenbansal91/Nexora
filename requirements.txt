@@ -1,0 +1,17 @@
+# Nexora — Python dependencies (backend + detection + correlation + simulator).
+# For local dev the default DATABASE_URL is SQLite; psycopg is only needed for
+# the Postgres deployment (docker-compose).
+
+fastapi>=0.115
+uvicorn[standard]>=0.30
+sqlalchemy>=2.0
+pydantic>=2.7
+pydantic-settings>=2.3
+websockets>=12
+scikit-learn>=1.4
+pandas>=2.2
+numpy>=1.26
+joblib>=1.4
+jsonschema>=4.21
+networkx>=3.2
+psycopg[binary]>=3.1

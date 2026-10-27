@@ -1,0 +1,80 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SecurityEvent",
+  "description": "Canonical event schema for Nexora. Every module (simulator, detection, correlation, backend, frontend) must produce/consume events matching this exact shape. This file is the single source of truth; the backend Pydantic model (backend/app/schemas.py) and the frontend TypeScript types (frontend/src/types/nexora.ts) mirror it, and tests assert they stay in sync.",
+  "type": "object",
+  "required": ["event_type", "timestamp", "user", "ip", "session", "severity"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Stable unique id for the event. Optional on the wire from the simulator; the pipeline assigns one if missing. Correlation needs it to key graph nodes."
+    },
+    "event_type": {
+      "type": "string",
+      "description": "Category of event.",
+      "enum": [
+        "auth_login_success",
+        "auth_login_failure",
+        "auth_logout",
+        "api_call",
+        "db_query",
+        "file_access",
+        "connection_attempt",
+        "port_scan",
+        "brute_force_attempt",
+        "data_exfiltration",
+        "api_abuse"
+      ]
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC, e.g. 2026-08-23T14:32:01.123Z"
+    },
+    "user": {
+      "type": "string",
+      "description": "Username or user ID. Use 'unknown' if unauthenticated."
+    },
+    "ip": {
+      "type": "string",
+      "description": "Source IP (IPv4 dotted string)."
+    },
+    "session": {
+      "type": "string",
+      "description": "Session ID. Group related events under the same session."
+    },
+    "severity": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Normalized severity, 0.0 (benign) to 1.0 (critical). Agreed as a float 0-1, not a 1-5 int scale."
+    },
+    "anomaly_score": {
+      "type": ["number", "null"],
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Detection-engine anomaly score, 0.0 (normal) to 1.0 (highly anomalous). Null until the detector has scored the event."
+    },
+    "attack_label": {
+      "type": ["string", "null"],
+      "description": "Classifier output. 'benign' or one of the scoped attack types (brute_force, port_scan, data_exfiltration, api_abuse). Null until classified.",
+      "enum": [
+        null,
+        "benign",
+        "brute_force",
+        "port_scan",
+        "data_exfiltration",
+        "api_abuse"
+      ]
+    },
+    "flagged": {
+      "type": "boolean",
+      "description": "True once the detection engine marks the event anomalous/attack. Correlation only chains flagged events."
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Optional event-type-specific extra fields (e.g. endpoint, query, filename). Keep required fields above minimal and put anything module-specific here so the contract doesn't change every time someone needs one more field.",
+      "additionalProperties": true
+    }
+  }
+}

@@ -1,0 +1,16 @@
+Attack_Type,Count,Percentage
+BENIGN,2273097,80.3004
+DoS Hulk,231073,8.163
+PortScan,158930,5.6144
+DDoS,128027,4.5227
+DoS GoldenEye,10293,0.3636
+FTP-Patator,7938,0.2804
+SSH-Patator,5897,0.2083
+DoS slowloris,5796,0.2048
+DoS Slowhttptest,5499,0.1943
+Bot,1966,0.0695
+Web Attack � Brute Force,1507,0.0532
+Web Attack � XSS,652,0.023
+Infiltration,36,0.0013
+Web Attack � Sql Injection,21,0.0007
+Heartbleed,11,0.0004
