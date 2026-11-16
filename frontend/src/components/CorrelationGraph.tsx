@@ -49,14 +49,15 @@ export const CorrelationGraph = ({ incident }: { incident?: Incident | null }) =
           <span className="entity-icon"><Icon size={27} strokeWidth={1.6}/></span><span className="entity-label" title={n.label}>{n.kind === 'File' ? n.label.split('/').pop() : n.label}<small>{n.kind} · {n.ids.length} events</small></span>
         </button>;
       })}
-      {!incident && <div className="graph-empty"><ShieldAlert size={38}/><h3>Follow the evidence.</h3><p>Inject a simulated attack to reveal its connected entities.</p></div>}
+      {!incident && <div className="graph-empty"><ShieldAlert size={38}/><h3>No correlated incident</h3><p>Inject a simulated attack to inspect its connected entities.</p></div>}
       <p className="graph-footnote">Shared incident evidence · select an entity to inspect</p>
     </div>
     <aside className="entity-inspector" aria-live="polite">
       <div className="inspector-status"><ShieldAlert size={15}/> {incident ? incident.severity + ' severity' : 'Monitoring simulation'}</div>
-      <h3>{incident?.attack_type.replaceAll('_', ' ') ?? 'A clearer view of your security.'}</h3>
+      <h3>{incident?.attack_type.replaceAll('_', ' ') ?? 'Incident details'}</h3>
       <p className="text-xs text-slate-500 leading-relaxed">{incident?.description ?? 'Connected events become an evidence trail. No incident is shown until the correlation engine reconstructs one.'}</p>
-      {incident && <><dl className="inspector-facts"><div><dt>Confidence</dt><dd>{Math.round(incident.confidence * 100)}%</dd></div><div><dt>Related events</dt><dd>{incident.events.length}</dd></div><div><dt>First seen</dt><dd>{new Date(incident.timeline.started_at).toLocaleTimeString()}</dd></div></dl>
+      {incident && <><dl className="inspector-facts"><div title="Rule-based evidence strength; not a calibrated attack probability"><dt>Evidence score</dt><dd>{Math.round(incident.confidence * 100)}/100</dd></div><div><dt>Related events</dt><dd>{incident.events.length}</dd></div><div><dt>First seen</dt><dd>{new Date(incident.timeline.started_at).toLocaleTimeString()}</dd></div></dl>
+        <p className="text-[11px] text-slate-500">Evidence score is heuristic, not an attack probability.</p>
         {selected && <div className="node-evidence"><strong>{selected.label}</strong><small>{selected.kind}</small>
           {evidence.length > 0 && <select aria-label="Related evidence event" value={event?.id ?? ''} onChange={e => setEventId(e.target.value)}>{evidence.map(e => <option key={e.id} value={e.id}>{new Date(e.timestamp).toLocaleTimeString()} · {e.event_type.replaceAll('_',' ')}</option>)}</select>}
           <p>{event?.reason ?? 'Linked through the same incident.'}</p>

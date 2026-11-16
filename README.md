@@ -98,9 +98,9 @@ full evidence chain; **Analytics** shows the benchmark numbers.
 
 | Attack | Signal class | How it's detected | Correlation template |
 |---|---|---|---|
-| **Brute force** | auth | ≥5 failed logins/user in a window → compromise chain | failures → success → db read → file download |
-| **Port scan** | network | ≥15 `connection_attempt`/IP in a window | burst of probes, one source IP |
-| **Data exfiltration** | volume | large file download (≥10 MB) | login → db read → bulk download |
+| **Brute force** | auth | ≥5 failed logins per account in 120 seconds, across IPs/sessions | failed-login alert; successful-session access can upgrade to compromise |
+| **Port scan** | network | ≥15 distinct host/port destinations per IP in 60 seconds | burst of probes, one source IP |
+| **Data exfiltration** | volume | large file download (≥10 MB) | login → SELECT ≥50,000 rows → bulk download |
 | **API abuse** | rate | ≥25 `api_call`/IP in a window | API-call burst, one source IP |
 
 Out of scope by design: privilege-escalation / insider scenarios, SQL-injection,
@@ -199,6 +199,15 @@ Local built-frontend launch: `npm ci --prefix frontend`,
 `npm run build --prefix frontend`, then
 `python -m uvicorn backend.app.main:app --host 127.0.0.1 --port 8000`.
 See [AUDIT.md](AUDIT.md) for verification results and remaining limits.
+
+The [2 November ML review](ML_REVIEW.md) documents the current architecture:
+Isolation Forest supplies scores; rules flag live alerts; Random Forest and
+uploaded-flow evaluation remain offline. It includes the model parameters,
+confirmed fixes, evaluation weaknesses and prioritised improvements.
+
+See [ML_UPGRADE.md](ML_UPGRADE.md) for the subsequent rotating-IP protection,
+shortcut-free retraining, independent generated holdout results and remaining
+weaknesses. Model scores are calibrated for review; live flags remain hybrid rules.
 =======
 # Nexora
 >>>>>>> 6d1ab720f25bbd1e730baf01d4389aaf815f264b

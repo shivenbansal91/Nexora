@@ -39,8 +39,13 @@ def list_entities(db: Session = Depends(get_db)):
     rows = db.execute(
         select(EventRow).order_by(EventRow.created_at.desc()).limit(500)
     ).scalars().all()
-    users, ips, sessions = set(), set(), set()
+    users, ips, sessions, sources = set(), set(), set(), set()
+    source_types = {'auth_login_success': 'Authentication', 'auth_login_failure': 'Authentication',
+                    'auth_logout': 'Authentication', 'api_call': 'API', 'db_query': 'Database',
+                    'file_access': 'File access', 'connection_attempt': 'Network'}
     for r in rows:
+        if r.event_type in source_types:
+            sources.add(source_types[r.event_type])
         if r.user and r.user != "unknown":
             users.add(r.user)
         if r.ip:
@@ -51,5 +56,5 @@ def list_entities(db: Session = Depends(get_db)):
         "users": sorted(users),
         "ips": sorted(ips),
         "sessions": sorted(sessions),
-        "services": ["auth-server", "api-gateway", "db-prod-01", "file-store", "edge-fw"],
+        "services": sorted(sources),
     }

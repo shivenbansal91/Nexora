@@ -64,7 +64,7 @@ const InfrastructurePage: React.FC = () => {
       <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Column title="Users" icon={<User className="w-4 h-4 text-blue-600" />} items={ent.users} accent="bg-blue-50" />
         <Column title="Source IPs" icon={<Globe className="w-4 h-4 text-indigo-600" />} items={ent.ips} accent="bg-indigo-50" />
-        <Column title="Services" icon={<Server className="w-4 h-4 text-emerald-600" />} items={ent.services} accent="bg-emerald-50" />
+        <Column title="Event sources" icon={<Server className="w-4 h-4 text-emerald-600" />} items={ent.services} accent="bg-emerald-50" />
         <Column title="Sessions" icon={<Database className="w-4 h-4 text-violet-600" />} items={ent.sessions.slice(0, 40)} accent="bg-violet-50" />
       </div>
     </div>

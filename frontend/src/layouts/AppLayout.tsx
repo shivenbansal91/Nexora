@@ -1,17 +1,20 @@
-import React from 'react';
-import { Outlet, NavLink, Link } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { Outlet, NavLink, Link, useLocation } from 'react-router-dom';
 import WaveImg from './../assets/Wave.png';
 import { useLive } from '../live/LiveContext';
 import { Bell } from 'lucide-react';
+import { useDismissiblePanel } from '../hooks/useDismissiblePanel';
 
 /**
  * AppLayout — Fixed sidebar + fixed topbar, window scrolls naturally.
- * This is required for Lenis root-mode smooth scroll to work.
- * ReactLenis root targets window.scrollY, so the window must be the scroller.
+ * Native page scrolling keeps nested panels independently scrollable.
  */
 const AppLayout: React.FC = () => {
   const { stats, connected, incidents } = useLive();
   const threatCount = stats.active_threats;
+  const { pathname } = useLocation();
+  useEffect(() => { window.scrollTo({ top: 0, left: 0, behavior: 'instant' }); }, [pathname]);
+  const { ref: notificationsRef, open: notificationsOpen, close: closeNotifications, toggle: toggleNotifications } = useDismissiblePanel();
   return (
     <div className="antialiased text-slate-800">
 
@@ -42,7 +45,7 @@ const AppLayout: React.FC = () => {
               </div>
               <div>
                 <div className="text-[11px] font-extrabold tracking-[0.2em] text-slate-900 uppercase">N E X O R A</div>
-                <div className="text-[7.5px] tracking-[0.16em] text-slate-400 font-semibold uppercase">See. Connect. Prevent.</div>
+                <div className="text-[9px] tracking-[0.12em] text-slate-500 font-semibold uppercase">Security monitoring</div>
               </div>
             </div>
 
@@ -92,11 +95,7 @@ const AppLayout: React.FC = () => {
 
 
             <div className="border-t border-slate-200/60 pt-3">
-              <p className="font-serif text-[14px] leading-snug text-slate-800">
-                Smarter Security<br/>
-                <span className="italic text-slate-400 font-light">for a Safer Tomorrow.</span>
-              </p>
-              <div className="w-5 h-px bg-slate-300 mt-2"></div>
+              <p className="text-xs text-slate-500">Local simulation workspace</p>
             </div>
           </div>
         </div>
@@ -113,18 +112,18 @@ const AppLayout: React.FC = () => {
             </span>
             {connected ? 'Event stream connected' : 'Reconnecting to pipeline…'}
           </div>
-          <details className="relative">
-            <summary aria-label={`Notifications, ${incidents.length} incidents`} className="relative cursor-pointer list-none p-2 text-slate-700"><Bell size={18}/>{incidents.length > 0 && <span className="absolute -top-1 -right-1 rounded-full bg-rose-500 text-white text-[9px] px-1">{incidents.length}</span>}</summary>
-            <div className="absolute right-0 top-10 w-80 max-h-96 overflow-auto bg-white border border-slate-200 shadow-xl rounded-2xl p-3">
+          <div ref={notificationsRef} className="relative">
+            <button type="button" onClick={toggleNotifications} aria-expanded={notificationsOpen} aria-controls="notification-panel" aria-label={`Notifications, ${incidents.length} incidents`} className="relative cursor-pointer p-2 text-slate-700"><Bell size={18}/>{incidents.length > 0 && <span className="absolute -top-1 -right-1 rounded-full bg-rose-500 text-white text-[9px] px-1">{incidents.length}</span>}</button>
+            {notificationsOpen && <div id="notification-panel" role="region" aria-label="Detected incident notifications" tabIndex={0} className="notification-panel bg-white border border-slate-200 shadow-xl rounded-2xl p-3">
               <h2 className="text-sm font-semibold p-2">Detected incidents</h2>
               {incidents.length === 0 && <p className="text-xs text-slate-500 p-2">No incident notifications yet.</p>}
-              {incidents.slice(0, 10).map(inc => <Link key={inc.id} to={`/incidents?incident=${encodeURIComponent(inc.id)}`} onClick={event => event.currentTarget.closest('details')?.removeAttribute('open')}
+              {incidents.map(inc => <Link key={inc.id} to={`/incidents?incident=${encodeURIComponent(inc.id)}`} onClick={closeNotifications}
                 className="block p-3 hover:bg-indigo-50 rounded-xl text-xs">
                 <span className="font-semibold text-slate-900">{inc.attack_pattern}</span>
                 <span className="block text-slate-500 mt-1">{inc.severity} · {new Date(inc.timeline.started_at).toLocaleString()}</span>
               </Link>)}
-            </div>
-          </details>
+            </div>}
+          </div>
           <div className="w-px h-4 bg-slate-200"></div>
 <span className="text-xs text-slate-500">Analyst workspace</span>
         </div>

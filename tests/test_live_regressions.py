@@ -61,6 +61,8 @@ def test_incremental_attack_persists_earlier_flags_and_complete_evidence(tmp_pat
             assert len(incidents) == 1
             assert incidents[0].attack_type == attack_type
             assert incidents[0].event_count >= 3
+            if attack_type == 'brute_force':
+                assert incidents[0].attack_pattern == 'Credential Brute Force'
             if attack_type in ("port_scan", "api_abuse"):
                 assert incidents[0].event_count == len(raw)
         assert live.stats()["events"] == len(raw)
@@ -133,4 +135,20 @@ def test_failed_write_is_retried_without_losing_event_counts(monkeypatch):
         assert live.stats()["events"] == 1
         assert not live._dirty_events
 
+    asyncio.run(check())
+
+
+def test_failed_flagged_write_does_not_inflate_saved_anomaly_count(monkeypatch):
+    live = module.LivePipeline()
+    live._det = Detector()
+    monkeypatch.setattr(module.settings, 'normal_rate_per_tick', 0)
+    live._pending = [(0, AttackInjector(seed=2).inject('data_exfiltration')[-1].to_dict())]
+    def fail(*args):
+        raise RuntimeError('database unavailable')
+    monkeypatch.setattr(live, '_persist', fail)
+    async def check():
+        with pytest.raises(RuntimeError):
+            await live._tick()
+        assert live.stats()['events'] == 0
+        assert live.stats()['anomalies'] == 0
     asyncio.run(check())

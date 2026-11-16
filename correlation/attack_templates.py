@@ -5,7 +5,7 @@ Each template is a sequence (or burst) of event types, linked by shared
 entities within a time window. The matcher (matcher.py) walks flagged events
 and stitches a template match into one incident.
 
-Scope (project plan §5, §7): exactly four templates, one per signal class.
+Scope: four attack types; brute force has attempt and compromise patterns.
 The port_scan and api_abuse templates — previously blocked pending a schema
 decision — are unblocked now that the schema carries a primitive
 `connection_attempt` event type and the injectors emit api_call bursts.
@@ -43,7 +43,16 @@ class AttackTemplate:
 
 
 def _is_download(e: dict) -> bool:
-    return e.get("metadata", {}).get("action") == "download"
+    return (e.get("metadata") or {}).get("action") == "download"
+
+
+def _is_bulk_read(e: dict) -> bool:
+    meta = e.get('metadata') or {}
+    return meta.get('query_type') == 'SELECT' and (meta.get('rows') or 0) >= 50_000
+
+
+def _is_bulk_download(e: dict) -> bool:
+    return _is_download(e) and ((e.get('metadata') or {}).get('bytes') or 0) >= 10_000_000
 
 
 # 1. Brute force -> credential compromise -> exfiltration (auth signal class)
@@ -61,7 +70,7 @@ BRUTE_FORCE = AttackTemplate(
         TemplateStep("db_query", max_gap_seconds=180),
         TemplateStep("file_access", max_gap_seconds=180, event_filter=_is_download),
     ],
-    link_by=["user", "session"],
+    link_by=["user"],
     window_seconds=900,
     base_severity=0.85,
 )
@@ -74,8 +83,8 @@ DATA_EXFILTRATION = AttackTemplate(
     description="A login followed by a large database read and a bulk file download, same session.",
     steps=[
         TemplateStep("auth_login_success", max_gap_seconds=0),
-        TemplateStep("db_query", max_gap_seconds=300),
-        TemplateStep("file_access", max_gap_seconds=300, event_filter=_is_download),
+        TemplateStep("db_query", max_gap_seconds=300, event_filter=_is_bulk_read),
+        TemplateStep("file_access", max_gap_seconds=300, event_filter=_is_bulk_download),
     ],
     link_by=["user", "session"],
     window_seconds=900,
@@ -87,7 +96,7 @@ PORT_SCAN = AttackTemplate(
     name="port_scan",
     display_name="Port Scan",
     attack_type="port_scan",
-    description="Many connection attempts to different ports from one source IP in a short window.",
+    description="Connections to at least 15 distinct host/port destinations from one source IP in a short window.",
     steps=[
         TemplateStep("connection_attempt", max_gap_seconds=30, min_count=15),
     ],
@@ -112,5 +121,12 @@ API_ABUSE = AttackTemplate(
 
 # Order matters for dedupe: more specific / longer chains first so that when an
 # attack matches both BRUTE_FORCE and DATA_EXFILTRATION, the richer one wins.
-ALL_TEMPLATES = [BRUTE_FORCE, DATA_EXFILTRATION, PORT_SCAN, API_ABUSE]
+BRUTE_FORCE_ATTEMPTS = AttackTemplate(
+    name='brute_force_attempts', display_name='Account login attack', attack_type='brute_force',
+    description='At least five failed logins target one account within 120 seconds, possibly across IPs and sessions. Compromise is not established.',
+    steps=[TemplateStep('auth_login_failure', max_gap_seconds=120, min_count=5)],
+    link_by=['user'], window_seconds=120, base_severity=.55,
+)
+
+ALL_TEMPLATES = [BRUTE_FORCE, DATA_EXFILTRATION, PORT_SCAN, API_ABUSE, BRUTE_FORCE_ATTEMPTS]
 TEMPLATES_BY_NAME = {t.name: t for t in ALL_TEMPLATES}

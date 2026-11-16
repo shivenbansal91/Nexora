@@ -44,3 +44,4 @@ data/raw/
 .env.*
 !.env.example
 .pytest_cache/
+detection/models/backups/

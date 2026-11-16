@@ -43,6 +43,10 @@ def match_template(graph, template: AttackTemplate, flagged_event_ids):
                 bursts[-1].append(event)
             for burst in bursts:
                 if len(burst) >= step.min_count:
+                    if template.attack_type == 'port_scan':
+                        targets = {((e.get('metadata') or {}).get('dest_host'), (e.get('metadata') or {}).get('dest_port')) for e in burst}
+                        if len({(host, port) for host, port in targets if host and port is not None}) < step.min_count:
+                            continue
                     matches.append({
                         "template_name": template.name, "display_name": template.display_name,
                         "attack_type": template.attack_type, "description": template.description,
@@ -68,6 +72,11 @@ def match_template(graph, template: AttackTemplate, flagged_event_ids):
                 continue
             if step.event_filter is not None and not step.event_filter(e):
                 continue
+            if template.attack_type == 'brute_force' and step_idx > 0:
+                if step_idx == 1 and e.get('session') in (None, '', 'unknown'):
+                    continue
+                if step_idx > 1 and e.get('session') != matched_steps[1][0].get('session'):
+                    continue
 
             step_matches.append(e)
             last_event_time = e["timestamp"]

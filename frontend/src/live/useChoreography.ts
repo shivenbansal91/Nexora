@@ -25,7 +25,7 @@ function sev(e: NexoraEvent): AttackEvent["severity"] {
   const s = e.anomaly_score ?? e.severity ?? 0;
   if (e.flagged) return s >= 0.8 ? "critical" : "high";
   // Model-only anomalies need review; only detector flags are confirmed alerts.
-  if (s >= 0.4) return "medium";
+  if (s >= 0.6) return "medium";
   return "info";
 }
 

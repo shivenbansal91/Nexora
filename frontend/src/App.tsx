@@ -1,5 +1,4 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { ReactLenis } from 'lenis/react';
 import AppLayout from './layouts/AppLayout';
 import Dashboard from './pages/Dashboard/Dashboard';
 import IncidentsList from './pages/Incidents/IncidentsList';
@@ -8,12 +7,10 @@ import CorrelationPage from './pages/Correlation/CorrelationPage';
 import AnalyticsPage from './pages/Analytics/AnalyticsPage';
 import InfrastructurePage from './pages/Infrastructure/InfrastructurePage';
 import { LiveProvider } from './live/LiveContext';
-import 'lenis/dist/lenis.css';
 import './index.css';
 
 function App() {
   return (
-    <ReactLenis root options={{ autoRaf: true, lerp: 0.08, smoothWheel: true }}>
       <LiveProvider>
         <Router>
           <Routes>
@@ -34,7 +31,6 @@ function App() {
           </Routes>
         </Router>
       </LiveProvider>
-    </ReactLenis>
   );
 }
 

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { api, openEventSocket } from "../api/client";
 import type { Incident, LiveStats, NexoraEvent } from "../types/nexora";
+import { mergeSnapshot } from './mergeSnapshot';
 
 interface LiveContextValue {
   connected: boolean;
@@ -41,16 +42,25 @@ export const LiveProvider: React.FC<{ children: React.ReactNode }> = ({ children
       [...new Map([...incoming, ...current].map(i => [i.id, i])).values()]
         .sort((a, b) => b.timeline.started_at.localeCompare(a.timeline.started_at)).slice(0, 100);
     let disposed = false;
+    let generation = 0;
+    let eventUpdates: Set<string> | null = null;
+    let incidentUpdates: Set<string> | null = null;
     const refresh = () => {
-      api.events(200).then(evs => { if (!disposed) setEvents(prev => mergeEvents(evs, prev)); }).catch(() => {});
+      const request = ++generation;
+      const changedEvents = new Set<string>(), changedIncidents = new Set<string>();
+      eventUpdates = changedEvents;
+      incidentUpdates = changedIncidents;
+      api.events(200).then(evs => {
+        if (!disposed && request === generation) setEvents(prev => mergeEvents([], mergeSnapshot(prev, evs, changedEvents)));
+      }).catch(() => {}).finally(() => { if (eventUpdates === changedEvents) eventUpdates = null; });
       api.incidents(100).then(incs => {
-        if (!disposed) setIncidents(prev => mergeIncidents(incs, prev));
-      }).catch(() => {});
+        if (!disposed && request === generation) setIncidents(prev => mergeIncidents([], mergeSnapshot(prev, incs, changedIncidents)));
+      }).catch(() => {}).finally(() => { if (incidentUpdates === changedIncidents) incidentUpdates = null; });
       api.attackTypes().then(r => { if (!disposed) setAttackTypes(r.attack_types); }).catch(() => {});
     };
     const close = openEventSocket(msg => {
-      if (msg.type === "event") setEvents(prev => mergeEvents(prev, [msg.data]));
-      else if (msg.type === "incident") setIncidents(prev => mergeIncidents(prev, [msg.data]));
+      if (msg.type === "event") { eventUpdates?.add(msg.data.id); setEvents(prev => mergeEvents(prev, [msg.data])); }
+      else if (msg.type === "incident") { incidentUpdates?.add(msg.data.id); setIncidents(prev => mergeIncidents(prev, [msg.data])); }
       else if (msg.type === "stats") setStats(msg.data);
     }, online => {
       if (disposed) return;

@@ -80,7 +80,6 @@ button { cursor: pointer; }
   .app-content { margin-left: 160px; }
   .app-content > div { padding: 20px 12px; }
   .app-content table { min-width: 620px; }
-  .app-content section { overflow-x: auto; }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
@@ -91,22 +90,20 @@ button { cursor: pointer; }
 .dashboard-hero { min-height:580px; }
 .dashboard-intro { width:330px; padding-top:16px; }
 .dashboard-title { font-size:68px; line-height:.98; }
-.dashboard-quote { position:absolute; left:calc(100vw - 560px); top:0; width:210px; }
 .dashboard-globe { position:absolute; width:390px; height:390px; top:245px; left:-85px; }
 .dashboard-network { margin-left:290px; margin-top:-240px; }
-.dashboard-tagline { bottom:25px; }
 .entity-graph { position:relative; display:grid; grid-template-columns:minmax(300px,1fr) 255px; gap:10px; align-items:center; min-height:440px; }
 .dashboard-network .entity-graph { min-height:530px; padding-top:55px; }
 .entity-map { position:relative; min-height:440px; height:100%; }
 .entity-orbits { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
-.graph-caption { position:absolute; top:5px; left:8px; color:#64748b; font-size:8px; letter-spacing:.18em; }
-.graph-caption span { display:block; margin-top:6px; font-size:10px; letter-spacing:0; color:#94a3b8; }
+.graph-caption { position:absolute; top:5px; left:8px; color:#64748b; font-size:10px; letter-spacing:.12em; }
+.graph-caption span { display:block; margin-top:6px; font-size:11px; letter-spacing:0; color:#64748b; }
 .entity-node { position:absolute; transform:translate(-50%,-50%); display:flex; align-items:center; justify-content:center; border:0; background:none; padding:0; z-index:2; }
 .entity-icon { display:grid; place-items:center; width:58px; height:58px; border-radius:50%; color:white; background:radial-gradient(circle at 30% 20%,color-mix(in srgb,var(--node-color),white 28%),var(--node-color) 65%,color-mix(in srgb,var(--node-color),#172554 35%)); border:2px solid #ffffffc9; outline:5px solid color-mix(in srgb,var(--node-color),transparent 85%); box-shadow:0 0 30px 10px color-mix(in srgb,var(--node-color),transparent 78%),inset 0 0 8px #ffffff40; transition:transform .2s; }
 .entity-node:hover .entity-icon,.entity-node.selected .entity-icon { transform:scale(1.12); outline-width:8px; }
 .entity-label { position:absolute; top:72px; left:50%; transform:translateX(-50%); width:155px; overflow-wrap:anywhere; color:#1e293b; font-size:11px; font-weight:600; text-align:center; line-height:1.4; }
 .entity-label small { display:block; color:#64748b; font-size:9px; font-weight:400; margin-top:3px; }
-.graph-footnote { position:absolute; bottom:-10px; width:100%; text-align:center; color:#94a3b8; font-size:9px; }
+.graph-footnote { position:absolute; bottom:-10px; width:100%; text-align:center; color:#64748b; font-size:11px; }
 .entity-inspector { position:relative; z-index:3; background:linear-gradient(145deg,#ffffffcf,#f8faffef); border:1px solid white; border-radius:22px; padding:20px; box-shadow:0 20px 45px -15px #47556945,0 0 0 1px #e2e8f099; backdrop-filter:blur(14px); }
 .inspector-status { display:flex; gap:7px; align-items:center; text-transform:uppercase; letter-spacing:.12em; font-size:8px; color:#be123c; }
 .entity-inspector h3 { font-size:18px; font-weight:650; text-transform:capitalize; color:#0f172a; margin:14px 0 8px; }
@@ -115,7 +112,7 @@ button { cursor: pointer; }
 .inspector-facts dt { color:#64748b; }.inspector-facts dd { color:#334155; font-weight:600; }
 .node-evidence { padding-top:13px; border-top:1px solid #e2e8f0; font-size:11px; overflow-wrap:anywhere; }
 .node-evidence strong { display:block; color:#334155; }.node-evidence small { display:block; margin:3px 0 10px; color:#64748b; }
-.node-evidence select { width:100%; padding:7px 4px; background:#f1f5f9; color:#475569; border-radius:7px; font-size:9px; }
+.node-evidence select { width:100%; padding:7px 4px; background:#f1f5f9; color:#475569; border-radius:7px; font-size:11px; }
 .node-evidence p { margin:9px 0; color:#475569; line-height:1.6; }
 .node-metadata { max-height:100px; overflow:auto; font-size:9px; }.node-metadata div { display:flex; justify-content:space-between; gap:8px; margin-bottom:4px; }.node-metadata dt { color:#64748b; }.node-metadata dd { text-align:right; }
 .investigate-link { margin-top:18px; display:flex; justify-content:space-between; align-items:center; background:linear-gradient(130deg,#25334d,#0f172a); color:white; padding:12px 15px; border-radius:10px; font-size:11px; box-shadow:0 8px 15px #0f172a20; }
@@ -125,6 +122,16 @@ button { cursor: pointer; }
 @media(max-width:520px) { .dashboard-intro .flex.items-end { gap:16px; }.dashboard-intro .flex.items-end > div > div:last-child { flex-wrap:wrap; font-size:10px; }.dashboard-globe { width:300px; left:-40px; } }
 .app-sidebar nav { margin-top:25px; }.app-sidebar nav a { padding-block:13px; margin-bottom:5px; }.app-sidebar nav a[aria-current] { background:#e9edfcaa; border-color:transparent; box-shadow:none; }
 @media(min-width:1500px) { .dashboard-network { margin-left:330px; }.dashboard-title { font-size:76px; }.entity-map { min-height:470px; } }
-@media(max-width:1200px) { .dashboard-network { margin:28px 0 0; }.dashboard-intro { width:100%; }.dashboard-hero { min-height:0; }.dashboard-quote { left:auto; right:0; }.dashboard-network .entity-graph { padding-top:0; min-height:450px; }.dashboard-tagline { display:none; }.dashboard-globe { top:170px; }.dashboard-title { font-size:58px; } }
-@media(max-width:850px) { .entity-graph { grid-template-columns:1fr; }.entity-map { height:420px; }.entity-inspector { margin-top:20px; }.dashboard-quote { display:none; }.dashboard-shell { padding:25px 18px; }.dashboard-globe { opacity:.4; }.dashboard-title { font-size:52px; } }
-@media(max-width:520px) { .app-sidebar { width:62px; }.app-sidebar nav a { padding:12px; justify-content:center; }.app-sidebar nav a span,.app-sidebar > div:first-child,.app-sidebar nav + div { display:none; }.app-sidebar .relative.z-10 > div { padding-inline:7px; }.app-sidebar .relative.z-10 > div:first-child > div:first-child { display:none; }.app-sidebar .relative.z-10 > div:last-child { display:none; }.app-header { left:62px; }.app-content { margin-left:62px; }.entity-label { width:105px; font-size:10px; }.entity-icon { width:46px; height:46px; }.entity-label { top:60px; }.entity-map { height:390px; }.graph-caption { font-size:7px; } }
+@media(max-width:1200px) { .dashboard-network { margin:28px 0 0; }.dashboard-intro { width:100%; }.dashboard-hero { min-height:0; }.dashboard-network .entity-graph { padding-top:0; min-height:450px; }.dashboard-globe { top:170px; }.dashboard-title { font-size:58px; } }
+@media(max-width:850px) { .entity-graph { grid-template-columns:1fr; }.entity-map { height:420px; }.entity-inspector { margin-top:20px; }.dashboard-shell { padding:25px 18px; }.dashboard-globe { opacity:.4; }.dashboard-title { font-size:52px; } }
+@media(max-width:520px) { .app-sidebar { width:62px; }.app-sidebar nav a { padding:12px; justify-content:center; }.app-sidebar nav a span,.app-sidebar > div:first-child,.app-sidebar nav + div { display:none; }.app-sidebar .relative.z-10 > div { padding-inline:7px; }.app-sidebar .relative.z-10 > div:first-child > div:first-child { display:none; }.app-sidebar .relative.z-10 > div:last-child { display:none; }.app-header { left:62px; }.app-content { margin-left:62px; }.entity-label { width:105px; font-size:10px; }.entity-icon { width:46px; height:46px; }.entity-label { top:60px; }.entity-map { height:390px; }.graph-caption { font-size:10px; } }
+
+/* Readable secondary text on the existing light surfaces. */
+.text-slate-400 { color:#64748b; }
+
+/* Nested lists own their scroll, including at their first and last item. */
+.overflow-auto, .overflow-x-auto, .node-metadata, .notification-panel, .attack-options { overscroll-behavior:contain; }
+.notification-panel { position:fixed; top:64px; right:16px; width:min(320px, calc(100vw - 32px)); max-height:min(384px, calc(100dvh - 80px)); overflow:auto; }
+.attack-options { max-height:min(300px, 45dvh); overflow:auto; }
+.app-sidebar > .relative.z-10 { overflow-y:auto; overscroll-behavior:contain; }
+@media (max-width:520px) { .notification-panel { width:min(320px, calc(100vw - 94px)); } }

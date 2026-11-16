@@ -60,7 +60,7 @@ const CorrelationPage: React.FC = () => {
               <div className="grid grid-cols-2 gap-y-1 text-[11px] text-slate-500 font-mono">
                 <span className="flex items-center gap-1"><Globe className="w-3 h-3" /> {inc.entities.ips[0] ?? '—'}</span>
                 <span className="flex items-center gap-1"><User className="w-3 h-3" /> {inc.entities.users[0] ?? '—'}</span>
-                <span className="flex items-center gap-1"><Zap className="w-3 h-3" /> {Math.round(inc.confidence * 100)}% conf</span>
+                <span className="flex items-center gap-1" title="Heuristic evidence strength, not attack probability"><Zap className="w-3 h-3" /> {Math.round(inc.confidence * 100)}/100 evidence</span>
                 <span className="flex items-center gap-1"><Database className="w-3 h-3" /> {inc.events.length} linked</span>
               </div>
             </motion.button>

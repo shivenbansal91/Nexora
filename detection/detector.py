@@ -27,7 +27,7 @@ from typing import List, Optional
 
 import numpy as np
 
-from .features import events_to_matrix
+from .features import FEATURE_NAMES, events_to_matrix
 
 MODELS_DIR = Path(__file__).resolve().parent / "models"
 ISO_PATH = MODELS_DIR / "isoforest.joblib"
@@ -51,21 +51,7 @@ def _as_dt(ts) -> datetime:
     return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
 
 
-def _has_burst(times: List[datetime], n: int, window_s: float) -> bool:
-    """True if any sliding window of length window_s holds >= n timestamps."""
-    if len(times) < n:
-        return False
-    ts = sorted(t.timestamp() for t in times)
-    j = 0
-    for i in range(len(ts)):
-        while ts[i] - ts[j] > window_s:
-            j += 1
-        if i - j + 1 >= n:
-            return True
-    return False
-
-
-def _burst_ids(events: List[dict], n: int, window_s: float) -> set[str]:
+def _burst_ids(events: List[dict], n: int, window_s: float, distinct_destinations: bool = False) -> set[str]:
     ordered = sorted(events, key=lambda e: _as_dt(e["timestamp"]))
     times = [_as_dt(e["timestamp"]).timestamp() for e in ordered]
     ids: set[str] = set()
@@ -74,6 +60,11 @@ def _burst_ids(events: List[dict], n: int, window_s: float) -> set[str]:
         while timestamp - times[left] > window_s:
             left += 1
         if right - left + 1 >= n:
+            if distinct_destinations:
+                targets = {((e.get('metadata') or {}).get('dest_host'), (e.get('metadata') or {}).get('dest_port'))
+                           for e in ordered[left:right + 1]}
+                if len({(host, port) for host, port in targets if host and port is not None}) < n:
+                    continue
             ids.update(e["id"] for e in ordered[left:right + 1])
     return ids
 
@@ -91,12 +82,18 @@ class Detector:
         iso, norm = None, None
         try:
             import joblib
-            if ISO_PATH.exists():
+            if ISO_PATH.exists() and NORM_PATH.exists():
                 iso = joblib.load(ISO_PATH)
-            if NORM_PATH.exists():
                 norm = json.loads(NORM_PATH.read_text())
+                if iso.n_features_in_ != len(FEATURE_NAMES) or not (
+                    np.isfinite(norm['p1']) and np.isfinite(norm['p99']) and norm['p99'] > norm['p1']
+                ):
+                    raise ValueError('Model feature count or score normalization is incompatible')
+                if norm.get('feature_names') != FEATURE_NAMES:
+                    raise ValueError('Model feature order is incompatible')
         except Exception as exc:  # pragma: no cover
             print(f"[detector] could not load models ({exc}); running rules-only.")
+            iso, norm = None, None
         return cls(iso, norm)
 
     @property
@@ -116,6 +113,8 @@ class Detector:
         hi = self._norm.get("p99", float(raw.max()))
         span = (hi - lo) or 1.0
         norm = np.clip((raw - lo) / span, 0.0, 1.0)
+        if 'raw_threshold' in self._norm:
+            norm = np.clip(.6 + (raw - self._norm['raw_threshold']) / span, 0, 1)
         # map back to original event order
         out = np.zeros(n)
         for pos, orig_idx in enumerate(order):
@@ -131,40 +130,48 @@ class Detector:
         for ev, s in zip(events, scores):
             ev["anomaly_score"] = round(float(s), 3)
             ev.setdefault("flagged", False)
-            ev.setdefault("attack_label", "benign")
+            # Simulator answers are evaluation labels, not detector predictions.
+            if not ev['flagged']:
+                ev['attack_label'] = 'benign'
 
         self._apply_rules(events)
         return events
 
     def _apply_rules(self, events: List[dict]) -> None:
         by_ip: dict[str, list] = {}
-        by_session: dict[str, list] = {}
+        by_session: dict[tuple[str, str], list] = {}
+        by_user: dict[str, list] = {}
         for ev in events:
-            by_ip.setdefault(ev.get("ip", ""), []).append(ev)
-            by_session.setdefault(ev.get("session", ""), []).append(ev)
+            if ev.get('user') not in (None, '', 'unknown'):
+                by_user.setdefault(ev['user'], []).append(ev)
+            if ev.get('ip') not in (None, '', 'unknown'):
+                by_ip.setdefault(ev['ip'], []).append(ev)
+            if all(ev.get(key) not in (None, '', 'unknown') for key in ('user', 'session')):
+                by_session.setdefault((ev['user'], ev['session']), []).append(ev)
 
         def flag(ev, label):
             ev["flagged"] = True
             ev["attack_label"] = label
-            ev["anomaly_score"] = max(ev.get("anomaly_score", 0.0), 0.8)
 
-        # 1. Brute force -> compromise chain. Detect the failed-login burst within
-        #    a SESSION (not across all of a username's unrelated normal sessions,
-        #    which would over-flag), then flag that session's compromise chain.
-        for session, evs in by_session.items():
-            if not session:
-                continue
-            fails = [_as_dt(e["timestamp"]) for e in evs if e["event_type"] == "auth_login_failure"]
-            if _has_burst(fails, BRUTE_FORCE_FAILURES, BRUTE_FORCE_WINDOW_S):
+        # Account failures can rotate IPs/sessions; correlation validates the
+        # successful session before assembling a full compromise chain.
+        for evs in by_user.values():
+            fails = [e for e in evs if e['event_type'] == 'auth_login_failure']
+            fail_ids = _burst_ids(fails, BRUTE_FORCE_FAILURES, BRUTE_FORCE_WINDOW_S)
+            if fail_ids:
+                failure_times = [_as_dt(e['timestamp']) for e in fails if e['id'] in fail_ids]
                 for e in evs:
-                    if e["event_type"] in ("auth_login_failure", "auth_login_success", "db_query") \
-                            or (e["event_type"] == "file_access" and (e.get("metadata") or {}).get("action") == "download"):
+                    follows_burst = any(0 <= (_as_dt(e['timestamp']) - t).total_seconds() <= 600 for t in failure_times)
+                    if e['id'] in fail_ids or (follows_burst and (
+                        e['event_type'] in ('auth_login_success', 'db_query')
+                        or (e['event_type'] == 'file_access' and (e.get('metadata') or {}).get('action') == 'download')
+                    )):
                         flag(e, "brute_force")
 
         # 2. Port scan, per ip
         for ip, evs in by_ip.items():
             conns = [e for e in evs if e["event_type"] == "connection_attempt"]
-            ids = _burst_ids(conns, PORT_SCAN_PROBES, PORT_SCAN_WINDOW_S)
+            ids = _burst_ids(conns, PORT_SCAN_PROBES, PORT_SCAN_WINDOW_S, distinct_destinations=True)
             for e in conns:
                 if e["id"] in ids:
                     flag(e, "port_scan")
@@ -184,8 +191,8 @@ class Detector:
                     and (meta.get("bytes") or 0) >= EXFIL_BYTES:
                 if not ev.get("flagged"):
                     flag(ev, "data_exfiltration")
-                sess = ev.get("session")
-                for e in events:
-                    if e.get("session") == sess and e["event_type"] in ("auth_login_success", "db_query") \
+                for e in by_session.get((ev.get('user'), ev.get('session')), []):
+                    if 0 <= (_as_dt(ev['timestamp']) - _as_dt(e['timestamp'])).total_seconds() <= 600 \
+                            and e["event_type"] in ("auth_login_success", "db_query") \
                             and not e.get("flagged"):
                         flag(e, "data_exfiltration")

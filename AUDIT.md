@@ -1,4 +1,10 @@
-# Nexora verification — 7 October 2026
+# Nexora verification
+
+Latest review: [ML, correlation and frontend audit — 2 November 2026](ML_REVIEW.md).
+It records additional confirmed fixes, 45 passing tests, actual model parameters,
+evaluation weaknesses and the rendered-UI verification limitation.
+
+The sections below retain the earlier 7 October 2026 verification record.
 
 ## Assessment
 

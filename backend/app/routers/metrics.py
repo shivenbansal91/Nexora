@@ -65,6 +65,7 @@ def metrics():
             model_metrics = {}
 
     real_path = p.with_name("metrics_real.json")
+    live_evaluation = dict(model_metrics)
     if real_path.exists():
         try:
             real = json.loads(real_path.read_text())
@@ -72,8 +73,17 @@ def metrics():
         except (OSError, ValueError, KeyError):
             model_metrics = {"source": "unavailable", "note": "Real benchmark file is unreadable. Re-run detection.benchmark_cicids."}
 
+    if model_metrics.get('source') == 'simulated':
+        # Older training outputs stored classifier FPR under the anomaly FPR label.
+        model_metrics['false_positive_rate_benign'] = (model_metrics.get('anomaly_detection') or {}).get('false_positive_rate_benign')
+        if 'partition_seeds' not in model_metrics:
+            model_metrics['note'] = ('Simulated application-event benchmark with a random event-row split; '
+                                'related sessions can cross splits. Live flags are rule-based. '
+                                'These scores do not establish accuracy on real logs.')
+
     return {
         "detection": model_metrics,
+        "live_evaluation": live_evaluation,
         "correlation": _correlation_selfcheck(),
         "runtime": {
             "ml_models_loaded": pipeline.ml_loaded,

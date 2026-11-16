@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import { CorrelationGraph } from '../../components/CorrelationGraph';
 import { useLive } from '../../live/LiveContext';
 import { toAttackEvent } from '../../live/useChoreography';
 import type { AttackEvent } from '../../engine/attackEngine';
 import MountainImg from '../../assets/Mountain.png';
 import SideGlobeImg from '../../assets/side_globe_dashboard.png';
+import { useDismissiblePanel } from '../../hooks/useDismissiblePanel';
 
 function formatEvents(n: number): string {
   return n >= 1_000_000 ? `${(n / 1_000_000).toFixed(2)}M` : n.toLocaleString();
@@ -24,38 +25,19 @@ const ATTACK_MENU: { key: string; label: string }[] = [
   { key: 'api_abuse', label: 'API Abuse' },
 ];
 
-function useAnimatedCount(target: number, duration = 600) {
-  const [display, setDisplay] = useState(target);
-  const prev = useRef(target);
-  useEffect(() => {
-    const start = prev.current;
-    prev.current = target;
-    const startTime = performance.now();
-    const raf = (now: number) => {
-      const p = Math.min((now - startTime) / duration, 1);
-      const eased = 1 - Math.pow(1 - p, 3);
-      setDisplay(Math.round(start + (target - start) * eased));
-      if (p < 1) frame = requestAnimationFrame(raf);
-    };
-    let frame = requestAnimationFrame(raf);
-    return () => cancelAnimationFrame(frame);
-  }, [target, duration]);
-  return display;
-}
-
 const Dashboard: React.FC = () => {
   const { stats, events, latestIncident, injectAttack, connected } = useLive();
   const [isInjecting, setIsInjecting] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
+  const { ref: attackMenuRef, open: attackMenuOpen, close: closeAttackMenu, toggle: toggleAttackMenu } = useDismissiblePanel();
 
   const displayEvents: AttackEvent[] = events.slice(0, 6).map(toAttackEvent);
 
-  const eventCount   = useAnimatedCount(stats.events);
-  const anomalyCount = useAnimatedCount(stats.anomalies);
-  const threatCount  = useAnimatedCount(stats.active_threats);
+  const eventCount = stats.events;
+  const anomalyCount = stats.anomalies;
+  const threatCount = stats.active_threats;
 
   const trigger = async (key?: string) => {
-    setMenuOpen(false);
+    closeAttackMenu();
     setIsInjecting(true);
     try { await injectAttack(key); } finally { setIsInjecting(false); }
   };
@@ -74,14 +56,11 @@ const Dashboard: React.FC = () => {
         {/* TOP ROW */}
         <div className="dashboard-intro relative z-10">
           <div className="max-w-[400px]">
-            <span className="text-[9px] uppercase font-bold tracking-[0.28em] text-slate-400 block mb-3">
-              Real-time simulation · threat intelligence
-            </span>
             <h1 className="dashboard-title font-serif font-normal tracking-tight text-slate-900">
-              See what<br />others miss.
+              Security<br />overview.
             </h1>
             <p className="text-[13px] text-slate-500 mt-2.5 font-light">
-              Uncover hidden connections. Stop attacks before they escalate.
+              Review simulated events, detection alerts and reconstructed incidents.
             </p>
 
             <div className="flex items-end gap-8 mt-7">
@@ -94,7 +73,7 @@ const Dashboard: React.FC = () => {
               <div>
                 <div className="text-[26px] font-bold tracking-tight tabular-nums text-amber-600">{anomalyCount}</div>
                 <div className="text-[11px] text-slate-500 mt-0.5 flex items-center gap-1.5">
-                  Anomalies <span className="text-[10px] font-mono font-semibold text-amber-500">live</span>
+                  Flagged <span className="text-[10px] font-mono font-semibold text-amber-500">events</span>
                 </div>
               </div>
               <div>
@@ -106,15 +85,6 @@ const Dashboard: React.FC = () => {
             </div>
           </div>
 
-          <div className="dashboard-quote max-w-[220px] text-right mt-2 shrink-0">
-            <p className="font-serif italic text-[14.5px] text-slate-600 leading-relaxed">
-              "It's not just about detecting threats, but understanding how they connect."
-            </p>
-            <div className="flex items-center justify-end gap-2 mt-3">
-              <div className="w-6 h-px bg-slate-400" />
-              <span className="text-[7.5px] tracking-[0.22em] font-bold text-slate-400 uppercase">Intelligence Creates Clarity</span>
-            </div>
-          </div>
         </div>
 
         {/* GRAPH */}
@@ -122,15 +92,11 @@ const Dashboard: React.FC = () => {
           <CorrelationGraph incident={latestIncident} />
         </div>
 
-        <div className="dashboard-tagline absolute bottom-14 left-0 z-10 pointer-events-none">
-          <p className="font-serif text-[17px] text-slate-700 leading-snug">A clearer view<br />of a safer world.</p>
-          <div className="w-6 h-px bg-slate-400 mt-2.5" />
-        </div>
       </div>
 
       {/* BOTTOM — Live Event Stream + Mountain */}
       <section aria-label="Event Telemetry" className="flex flex-col lg:flex-row gap-5">
-        <div className="flex-[3] bg-white/90 rounded-3xl border border-slate-200/60 shadow-sm overflow-hidden backdrop-blur-sm">
+        <div className="flex-[3] bg-white/90 rounded-3xl border border-slate-200/60 shadow-sm backdrop-blur-sm">
           <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
             <div className="flex items-center gap-2.5">
               <span className="relative flex h-2.5 w-2.5">
@@ -147,10 +113,11 @@ const Dashboard: React.FC = () => {
 
             <div className="flex items-center gap-3">
               {/* Inject-attack dropdown — triggers the real backend pipeline */}
-              <div className="relative">
+              <div className="relative" ref={attackMenuRef}>
                 <button
-                  onClick={() => setMenuOpen((o) => !o)}
-                  aria-expanded={menuOpen}
+                  onClick={toggleAttackMenu}
+                  aria-expanded={attackMenuOpen}
+                  aria-controls="attack-options"
                   disabled={isInjecting || !connected}
                   className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[11px] font-semibold border transition-all ${
                     isInjecting
@@ -165,8 +132,8 @@ const Dashboard: React.FC = () => {
                   {isInjecting ? 'Detecting…' : 'Inject Attack'}
                   <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9" /></svg>
                 </button>
-                {menuOpen && (
-                  <div className="absolute right-0 mt-1 w-48 bg-white border border-slate-200 rounded-xl shadow-xl z-40 overflow-hidden py-1">
+                {attackMenuOpen && (
+                  <div id="attack-options" role="group" aria-label="Simulated attack options" className="attack-options absolute right-0 mt-1 w-48 bg-white border border-slate-200 rounded-xl shadow-xl z-20 py-1">
                     {ATTACK_MENU.map((a) => (
                       <button key={a.key} onClick={() => trigger(a.key)}
                         className="w-full text-left px-3 py-2 text-[11px] font-medium text-slate-600 hover:bg-rose-50 hover:text-rose-600 transition">
@@ -214,12 +181,7 @@ const Dashboard: React.FC = () => {
         </div>
 
         <div className="flex-1 min-w-[180px] rounded-3xl overflow-hidden relative flex flex-col justify-end border border-slate-200/50 shadow-sm" style={{ minHeight: 240 }}>
-          <img src={MountainImg} alt="Mountain" className="absolute inset-0 w-full h-full object-cover" />
-          <div className="absolute inset-0 bg-gradient-to-t from-white/95 via-white/40 to-white/10" />
-          <div className="relative z-10 p-6">
-            <h4 className="font-serif text-[22px] font-normal leading-tight tracking-tight text-slate-900">Turning<br />Data into<br />Security.</h4>
-            <div className="w-5 h-px bg-slate-700 mt-3" />
-          </div>
+          <img src={MountainImg} alt="" className="absolute inset-0 w-full h-full object-cover" />
         </div>
       </section>
 

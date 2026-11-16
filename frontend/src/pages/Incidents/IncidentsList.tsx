@@ -20,7 +20,7 @@ const IncidentCard: React.FC<{ inc: Incident; open: boolean; onToggle: () => voi
   const cfg = SEV[inc.severity] ?? SEV.low;
   return (
     <motion.div layout className={`rounded-2xl border ${cfg.border} bg-white/90 shadow-sm overflow-hidden`}>
-      <button onClick={onToggle} className="w-full flex items-center gap-4 px-5 py-4 text-left hover:bg-slate-50/60 transition">
+      <button onClick={onToggle} aria-expanded={open} className="w-full flex items-center gap-4 px-5 py-4 text-left hover:bg-slate-50/60 transition">
         <span className={`w-9 h-9 rounded-xl ${cfg.bg} flex items-center justify-center shrink-0`}>
           <Shield className="w-4 h-4" style={{ color: cfg.color }} />
         </span>
@@ -33,7 +33,7 @@ const IncidentCard: React.FC<{ inc: Incident; open: boolean; onToggle: () => voi
         </div>
         <div className="hidden md:flex items-center gap-6 text-[11px] text-slate-500 font-mono shrink-0">
           <span className="flex items-center gap-1"><Target className="w-3 h-3" /> {inc.events.length} evts</span>
-          <span className="flex items-center gap-1"><Shield className="w-3 h-3" /> {Math.round(inc.confidence * 100)}%</span>
+          <span className="flex items-center gap-1" title="Heuristic evidence strength, not attack probability"><Shield className="w-3 h-3" /> {Math.round(inc.confidence * 100)}/100 evidence</span>
           <span className="text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded">{inc.id}</span>
         </div>
         <ChevronRight className={`w-4 h-4 text-slate-400 transition-transform ${open ? 'rotate-90' : ''}`} />
@@ -94,7 +94,7 @@ const IncidentsPage: React.FC = () => {
           <span className="text-[11px] font-mono uppercase tracking-widest text-slate-400 font-semibold">Incident Response</span>
           <h1 className="text-3xl font-serif italic text-slate-900 font-normal mt-1">Reconstructed Incidents</h1>
           <p className="text-xs text-slate-500 mt-1">
-            {incidents.length} incident{incidents.length === 1 ? '' : 's'} assembled from correlated events — not a pile of independent alerts.
+            {incidents.length} recorded incident{incidents.length === 1 ? '' : 's'} with linked event evidence.
           </p>
         </div>
         <button onClick={() => injectAttack()} className="px-4 py-2 rounded-xl text-[12px] font-semibold bg-slate-900 text-white hover:bg-slate-700 transition">

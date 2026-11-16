@@ -1,11 +1,11 @@
 """
 Feature extraction — canonical events -> numeric matrix.
 
-Shared by the IsolationForest anomaly detector, the attack classifier, and the
-real-dataset benchmark, so every model sees the same feature definition.
+Shared by the live IsolationForest and simulated-data attack classifier.
+The separate network-flow benchmark uses the uploaded CSV's numeric columns.
 
 Two feature families:
-  - per-event:  event type (one-hot), hour-of-day, severity, log(bytes),
+  - per-event:  event type (one-hot), log(bytes),
                 log(rows), error-status flag
   - rolling context (what makes burst attacks visible): counts of recent
                 events by the same ip / user within short windows
@@ -37,8 +37,6 @@ _ONEHOT = {t: i for i, t in enumerate(EVENT_TYPES)}
 FEATURE_NAMES = (
     [f"is_{t}" for t in EVENT_TYPES]
     + [
-        "hour_norm",
-        "severity",
         "log_bytes",
         "log_rows",
         "is_error_status",
@@ -47,6 +45,8 @@ FEATURE_NAMES = (
         "cnt_fail_user_120s",
         "cnt_conn_ip_60s",
         "cnt_api_ip_30s",
+        "failure_source_diversity_120s",
+        "distinct_destinations_ip_60s",
     ]
 )
 
@@ -83,6 +83,8 @@ def events_to_matrix(events: List[dict]) -> Tuple[np.ndarray, List[int]]:
     user_fail_times: dict[str, list] = {}
     ip_conn_times: dict[str, list] = {}
     ip_api_times: dict[str, list] = {}
+    failure_sources: dict[str, list] = {}
+    connection_targets: dict[str, list] = {}
 
     rows = []
     order = []
@@ -97,8 +99,6 @@ def events_to_matrix(events: List[dict]) -> Tuple[np.ndarray, List[int]]:
         if et in _ONEHOT:
             onehot[_ONEHOT[et]] = 1.0
 
-        hour_norm = dt.hour / 23.0
-        severity = float(ev.get("severity", 0.0) or 0.0)
         log_bytes = math.log1p(float(meta.get("bytes", 0) or 0)) / 20.0
         log_rows = math.log1p(float(meta.get("rows", 0) or 0)) / 15.0
         status = meta.get("status_code", 200)
@@ -111,8 +111,10 @@ def events_to_matrix(events: List[dict]) -> Tuple[np.ndarray, List[int]]:
         cnt_api = _count_recent(ip_api_times.get(ip, []), dt, 30)
 
         rows.append(onehot + [
-            hour_norm, severity, log_bytes, log_rows, is_error, is_download,
+            log_bytes, log_rows, is_error, is_download,
             cnt_ip / 20.0, cnt_fail / 10.0, cnt_conn / 20.0, cnt_api / 40.0,
+            len({source for time, source in failure_sources.get(user, []) if 0 <= (dt-time).total_seconds() <= 120}) / 10.0,
+            len({target for time, target in connection_targets.get(ip, []) if 0 <= (dt-time).total_seconds() <= 60}) / 20.0,
         ])
         order.append(orig_idx)
 
@@ -120,8 +122,12 @@ def events_to_matrix(events: List[dict]) -> Tuple[np.ndarray, List[int]]:
         ip_times.setdefault(ip, []).append(dt)
         if et == "auth_login_failure":
             user_fail_times.setdefault(user, []).append(dt)
+            if user not in ('', 'unknown', None) and ip not in ('', 'unknown', None):
+                failure_sources.setdefault(user, []).append((dt, ip))
         if et == "connection_attempt":
             ip_conn_times.setdefault(ip, []).append(dt)
+            if ip and meta.get('dest_host') and meta.get('dest_port') is not None:
+                connection_targets.setdefault(ip, []).append((dt, (meta['dest_host'], meta['dest_port'])))
         if et == "api_call":
             ip_api_times.setdefault(ip, []).append(dt)
 

@@ -60,6 +60,7 @@ export interface PerClassMetric {
 }
 
 export interface MetricsResponse {
+  live_evaluation?: { source?: string; note?: string; anomaly_detection?: { precision: number; recall: number; f1: number; false_positive_rate_benign?: number; per_attack_recall?: Record<string, number> }; macro_f1?: number };
   detection: {
     source?: string;
     note?: string;

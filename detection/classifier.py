@@ -6,9 +6,8 @@ injected attack types) to produce the per-class precision/recall/F1 the viva
 needs. benchmark_cicids.py produces the equivalent numbers on real labeled
 data (CICIDS2017 / UNSW-NB15) when the dataset is present in data/raw/.
 
-In the live pipeline the rule layer in detector.py does the flagging (it is
-more reliable for bursts); this classifier is loaded for the reported metric
-and is available as a secondary label if needed.
+The live pipeline does not load or invoke this classifier. Its reported metrics
+are generated offline by the training script; detector.py rules set live flags.
 """
 
 from __future__ import annotations

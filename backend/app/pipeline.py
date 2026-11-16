@@ -46,6 +46,7 @@ class LivePipeline:
         self._dirty_events: dict[str, dict] = {}
         self._new_event_ids: set[str] = set()
         self._incident_sizes: dict[str, int] = {}
+        self._incident_patterns: dict[str, str] = {}
         self._task: Optional[asyncio.Task] = None
         self._running = False
         self._next_normal_at = 0.0
@@ -169,17 +170,15 @@ class LivePipeline:
         window_list = list(self._window)
         old_flags = {d["id"]: (d.get("flagged"), d.get("attack_label")) for d in window_list}
         await asyncio.to_thread(self._det.annotate, window_list)
-        for d in window_list:
-            if d.get("flagged"):
-                self._flagged_ids.add(d["id"])
-
         incidents = await asyncio.to_thread(reconstruct_incidents, window_list)
-        new_incidents = [i for i in incidents if self._incident_sizes.get(i["id"]) != len(i["events"])]
+        new_incidents = [i for i in incidents if self._incident_sizes.get(i["id"]) != len(i["events"])
+                         or self._incident_patterns.get(i['id']) != i['attack_pattern']]
 
         changed = [d for d in window_list if old_flags[d["id"]] != (d.get("flagged"), d.get("attack_label"))]
         self._dirty_events.update({d["id"]: d for d in changed})
         updates = dict(self._dirty_events)
         await asyncio.to_thread(self._persist, list(updates.values()), new_incidents)
+        self._flagged_ids.update(d['id'] for d in updates.values() if d.get('flagged'))
         self._total_events += len(self._new_event_ids)
         self._new_event_ids.clear()
         # Retry failed writes on the next tick before discarding their evidence.
@@ -187,6 +186,7 @@ class LivePipeline:
         for inc in new_incidents:
             self._seen_incidents.add(inc["id"])
             self._incident_sizes[inc["id"]] = len(inc["events"])
+            self._incident_patterns[inc['id']] = inc['attack_pattern']
         self.last_error = None
         self.max_latency_seconds = max(self.max_latency_seconds, time.monotonic() - started)
         await self._broadcast(list(updates.values()), new_incidents)

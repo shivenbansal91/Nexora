@@ -29,15 +29,26 @@ const AnalyticsPage: React.FC = () => {
   return (
     <div className="px-8 py-8 max-w-[1200px] mx-auto space-y-6">
       <div className="border-b border-slate-200/80 pb-5">
-        <span className="text-[11px] font-mono uppercase tracking-widest text-slate-400 font-semibold">Measured evaluation</span>
         <h1 className="text-3xl font-serif italic text-slate-900 font-normal mt-1">Benchmarks & Metrics</h1>
-        <p className="text-xs text-slate-500 mt-1">Detection, classification and correlation performance. Detection numbers are measured; source is labelled.</p>
+        <p className="text-xs text-slate-500 mt-1">Offline model evaluation and simulated scenario checks. These do not measure live alert precision or recall.</p>
+        <p className="text-xs text-slate-600 mt-2">Live pipeline: {m.runtime.ml_models_loaded ? 'Isolation Forest scoring with rule-based alert flagging' : 'rules only; the ML model is unavailable'}. Random Forest classification is evaluated offline.</p>
       </div>
 
       {/* Headline tiles */}
+      {m.live_evaluation?.anomaly_detection && <section className="bg-white/90 rounded-2xl border border-slate-200/60 p-5">
+        <h2 className="text-sm font-semibold mb-3">Application model · simulated holdout evaluation</h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <Tile label="Precision" value={pct(m.live_evaluation.anomaly_detection.precision)}/>
+          <Tile label="Recall" value={pct(m.live_evaluation.anomaly_detection.recall)}/>
+          <Tile label="F1" value={pct(m.live_evaluation.anomaly_detection.f1)}/>
+          <Tile label="Benign FPR" value={pct(m.live_evaluation.anomaly_detection.false_positive_rate_benign)}/>
+        </div>
+        <p className="text-xs text-slate-500 mt-3">{m.live_evaluation.note}</p>
+        {m.live_evaluation.anomaly_detection.per_attack_recall && <p className="text-xs text-slate-600 mt-2">Score-only recall by attack: {Object.entries(m.live_evaluation.anomaly_detection.per_attack_recall).map(([name,value]) => `${name.replaceAll('_',' ')} ${pct(value)}`).join(' · ')}. Rule-based detection is evaluated separately.</p>}
+      </section>}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Tile label="Anomaly F1" value={anom ? anom.f1.toFixed(2) : '—'} sub="IsolationForest · attack vs benign" accent="text-indigo-600" />
-        <Tile label="Correlation accuracy" value={pct(m.correlation.accuracy)} sub={`${m.correlation.correctly_reconstructed}/${m.correlation.attacks_tested} attacks reconstructed`} accent="text-emerald-600" />
+        <Tile label="Scenario checks" value={`${m.correlation.correctly_reconstructed}/${m.correlation.attacks_tested}`} sub="simulated attacks reconstructed" accent="text-emerald-600" />
         <Tile label="Benign FPR" value={pct(det.false_positive_rate_benign)} sub="false positives on normal traffic" accent="text-rose-600" />
         <Tile label="Max processing time" value={`${m.runtime.max_detection_latency_seconds.toFixed(3)}s`} sub="observed detection + correlation + storage" />
       </div>
@@ -53,7 +64,7 @@ const AnalyticsPage: React.FC = () => {
       <div className="grid lg:grid-cols-2 gap-6">
         {/* Anomaly detection (the transferable headline) */}
         <div className="bg-white/90 rounded-2xl border border-slate-200/60 shadow-sm p-5">
-          <h3 className="text-[12px] font-semibold text-slate-900 mb-1">Anomaly Detection · validation calibrated</h3>
+          <h3 className="text-[12px] font-semibold text-slate-900 mb-1">Anomaly Detection · {anom?.preprocessing ? 'validation calibrated' : 'simulated baseline'}</h3>
           <p className="text-[11px] text-slate-500 mb-3">{anom?.model ?? 'IsolationForest'} · held-out evaluation.</p>
           <div className="grid grid-cols-3 gap-3">
             <Tile label="Precision" value={anom ? anom.precision.toFixed(2) : '—'} />
